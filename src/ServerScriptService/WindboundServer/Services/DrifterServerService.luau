@@ -32,11 +32,11 @@ type ActiveWeave = {
 }
 local activeWeaves: { [Player]: ActiveWeave } = {}
 
--- Defined Spawning Anchor Points directly at and around the SkywindPier LaunchPad (138, 164.2, 0)
+-- Defined Spawning Anchor Points directly at the SkywindPier LaunchPad
 local SPAWN_ANCHORS = {
-	Vector3.new(158, 168, 0),   -- Directly in front of the Launch Pad tip (floating at eye level!)
-	Vector3.new(150, 172, 16),  -- Off the right wing of the Launch Pad
-	Vector3.new(150, 172, -16), -- Off the left wing of the Launch Pad
+	Vector3.new(138, 172, 0),   -- Directly above the Launch Pad disc (8 studs up)
+	Vector3.new(175, 174, 0),   -- 37 studs ahead in the open sky
+	Vector3.new(160, 176, 25),  -- Off the right wing of the Launch Pad
 }
 
 function DrifterServerService.init()
@@ -73,7 +73,7 @@ function DrifterServerService.init()
 		end
 	end)
 	
-	print("[DrifterServerService] Initialized with wild Leafgliders hovering right at the Skywind Launch Pad.")
+	print("[DrifterServerService] Initialized with glowing ball Drifters at Launch Pad.")
 end
 
 function DrifterServerService.spawnDrifter(drifterId: string, anchor: Vector3)
@@ -104,8 +104,7 @@ function DrifterServerService.spawnDrifter(drifterId: string, anchor: Vector3)
 	
 	root.Anchored = true
 	root.CanCollide = false
-	-- Face forward (+X) out into the open sky off the pier edge
-	root.CFrame = CFrame.lookAt(anchor, anchor + Vector3.new(1, 0, 0))
+	root.CFrame = CFrame.new(anchor)
 	
 	for _, desc in drifter:GetDescendants() do
 		if desc:IsA("BasePart") then
@@ -120,7 +119,7 @@ function DrifterServerService.spawnDrifter(drifterId: string, anchor: Vector3)
 		Model = drifter,
 		Stats = stats,
 		HomeAnchor = anchor,
-		CurrentTarget = anchor + Vector3.new(math.random(-15, 15), 0, math.random(-15, 15)),
+		CurrentTarget = anchor + Vector3.new(math.random(-12, 12), 0, math.random(-12, 12)),
 		BaseY = anchor.Y,
 		Speed = stats.Speed,
 		NextWaypointTime = os.clock() + math.random(5, 8),
@@ -142,10 +141,10 @@ function DrifterServerService.stepAI(dt: number)
 		
 		-- Pick new random wander waypoint within tight radius near launch pad
 		if now >= data.NextWaypointTime then
-			local rad = 18 -- Keep tight to the launch pad area
+			local rad = 15
 			local randOffset = Vector3.new(
 				math.random(-rad, rad),
-				math.random(-4, 4),
+				math.random(-3, 3),
 				math.random(-rad, rad)
 			)
 			data.CurrentTarget = data.HomeAnchor + randOffset
@@ -197,7 +196,7 @@ function DrifterServerService.handleStartWeave(player: Player, data: any)
 			stats = drifterData.Stats,
 			timeLimit = drifterData.Stats.CaptureTimeLimit,
 		})
-		print(string.format("[DrifterServerService] %s initiated windweaving with %s at Launch Pad (dist=%.1f)",
+		print(string.format("[DrifterServerService] %s initiated windweaving with %s (dist=%.1f)",
 			player.Name, drifter.Name, dist))
 	else
 		print(string.format("[DrifterServerService] StartWeave rejected: player too far (dist=%.1f, max=%.1f)",
