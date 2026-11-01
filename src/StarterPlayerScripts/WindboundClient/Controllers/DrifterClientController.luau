@@ -302,8 +302,7 @@ function DrifterClientController.showVictory(title: string, sub: string)
 	getOrCreateHUD()
 	if not victoryBanner then return end
 	
-	victoryBanner.Text = string.format("%s
-<font size='15' color='#B4FFC8'>%s</font>", title, sub)
+	victoryBanner.Text = string.format("%s\n<font size='15' color='#B4FFC8'>%s</font>", title, sub)
 	victoryBanner.RichText = true
 	victoryBanner.Visible = true
 	
