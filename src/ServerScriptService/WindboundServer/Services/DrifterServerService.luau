@@ -222,18 +222,18 @@ function DrifterServerService.handleStartWeave(player: Player, data: any)
 		
 		-- INITIATE CHASE: Start fleeing into the open sky!
 		drifterData.IsFleeing = true
-		drifterData.Speed = 16.5 -- Catchable chase speed (glider flies at 22-26)
+		drifterData.Speed = 8.0 -- Calm chase speed matched to starter glider max speed 12!
 		
 		local root = drifter.PrimaryPart
 		local startPos = root.Position
 		
-		-- Flee outward along +X into the open sky with exciting banking turns!
-		-- WP1: 42 studs ahead, slight rise
-		-- WP2: 90 studs ahead, bank right
-		-- WP3: 140 studs ahead, sweeping center
-		local wp1 = startPos + Vector3.new(42, 3, -4)
-		local wp2 = startPos + Vector3.new(90, 6, 14)
-		local wp3 = startPos + Vector3.new(140, 4, -2)
+		-- Flee outward along +X into the open sky with gentle, graceful curves
+		-- WP1: 28 studs ahead
+		-- WP2: 62 studs ahead, gentle bank right
+		-- WP3: 98 studs ahead, sweeping center
+		local wp1 = startPos + Vector3.new(28, 2, -3)
+		local wp2 = startPos + Vector3.new(62, 4, 8)
+		local wp3 = startPos + Vector3.new(98, 3, 0)
 		
 		drifterData.FleeWaypoints = { wp1, wp2, wp3 }
 		drifterData.FleeIndex = 1

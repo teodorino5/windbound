@@ -27,6 +27,8 @@ local currentYaw = 0
 local currentPitch = 0
 local smoothedRoll = 0
 local flightTime = 0
+local MAX_STAMINA = 24.0
+local currentStamina = MAX_STAMINA
 
 local lastDashTime = -99
 local isDashing = false
@@ -101,6 +103,7 @@ function KiteFlightController.startGliding(glider: Model?, stats: any)
 	activeGlider = glider
 	activeStats = stats
 	flightTime = 0
+	currentStamina = MAX_STAMINA
 	
 	local player = Players.LocalPlayer
 	local character = player.Character
@@ -375,14 +378,19 @@ function KiteFlightController.stepFlight(dt: number)
 	
 	flightAlign.CFrame = flightRot
 	
-	local forwardSpeed = activeStats.BaseSpeed
+	-- Launch acceleration ramp: starts at 5.5 studs/s, ramps to BaseSpeed over 1.6s
+	local launchProgress = math.clamp(flightTime / 1.6, 0, 1)
+	local baseTarget = activeStats.BaseSpeed
+	local rampedBase = 5.5 + (baseTarget - 5.5) * launchProgress
+	
+	local forwardSpeed = rampedBase
 	
 	if currentPitch < 0 then
 		local diveFactor = -currentPitch / math.rad(48)
-		forwardSpeed += (diveFactor * (activeStats.MaxSpeed - activeStats.BaseSpeed))
+		forwardSpeed += (diveFactor * (activeStats.MaxSpeed - baseTarget))
 	elseif currentPitch > 0 then
 		local climbFactor = currentPitch / math.rad(38)
-		forwardSpeed = math.max(activeStats.MinSpeed, forwardSpeed - (climbFactor * 14))
+		forwardSpeed = math.max(activeStats.MinSpeed, forwardSpeed - (climbFactor * 6.0))
 	end
 	
 	local now = os.clock()
@@ -397,14 +405,27 @@ function KiteFlightController.stepFlight(dt: number)
 	local headwindFactor = math.max(0, -headingForward:Dot(windDir))
 	local tailwindFactor = math.max(0, headingForward:Dot(windDir))
 	
-	forwardSpeed += (tailwindFactor * windSpeed * 0.45)
-	local thermalLift = (headwindFactor * windSpeed * 0.55) * activeStats.LiftEfficiency
+	forwardSpeed += (tailwindFactor * windSpeed * 0.20)
+	local thermalLift = (headwindFactor * windSpeed * 0.35) * activeStats.LiftEfficiency
+	
+	-- STRICTLY CLAMP SPEED TO MAXSPEED (12 studs/s max for Meadow Glider!)
+	forwardSpeed = math.clamp(forwardSpeed, activeStats.MinSpeed, activeStats.MaxSpeed)
 	
 	local crosswind = wind - (headingForward * headingForward:Dot(wind))
-	local driftVelocity = crosswind * 0.22
+	local driftVelocity = crosswind * 0.12
 	
-	local verticalClimb = math.sin(currentPitch) * forwardSpeed
-	local verticalVelocity = -1.8 + verticalClimb + thermalLift
+	-- Realistic glide physics: climbing trades excess forward speed, no infinite altitude gain!
+	local excessSpeed = math.max(0, forwardSpeed - activeStats.MinSpeed)
+	local verticalClimb = math.sin(currentPitch) * excessSpeed * 0.75
+	local naturalSink = -2.6 -- Steady descent toward ground
+	local verticalVelocity = naturalSink + verticalClimb + thermalLift
+	
+	-- Drain flight endurance
+	currentStamina = math.max(0, currentStamina - dt)
+	if currentStamina <= 0 then
+		KiteFlightController.requestRecall()
+		return
+	end
 	
 	if flightTime < 0.6 and wasOnGroundLaunch then
 		verticalVelocity = math.max(verticalVelocity, 14)
@@ -444,6 +465,14 @@ end
 
 function KiteFlightController.isFlying(): boolean
 	return activeGlider ~= nil
+end
+
+function KiteFlightController.addStamina(amount: number)
+	currentStamina = math.clamp(currentStamina + amount, 0, MAX_STAMINA)
+end
+
+function KiteFlightController.getStaminaFraction(): number
+	return currentStamina / MAX_STAMINA
 end
 
 function KiteFlightController.getActiveKite(): Model?

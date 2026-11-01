@@ -448,6 +448,9 @@ function DrifterClientController.stepDetection(dt: number)
 					end
 				end
 				
+				-- Refill flight stamina by +8 seconds on passing each hoop!
+				KiteFlightController.addStamina(8)
+				
 				local passedIdx = activeSession.CurrentRingIndex
 				activeSession.CurrentRingIndex += 1
 				

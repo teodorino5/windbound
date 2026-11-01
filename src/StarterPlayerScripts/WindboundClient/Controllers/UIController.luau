@@ -27,6 +27,8 @@ local flightStatusLabel: TextLabel
 local speedAltitudeLabel: TextLabel
 local dashFillBar: Frame
 local controlsPromptLabel: TextLabel
+local staminaFrame: Frame
+local staminaFill: Frame
 
 local currentEquippedId = "MeadowKite"
 
@@ -253,6 +255,39 @@ function UIController.init()
 		UIController.update(dt)
 	end)
 	
+	-- Flight Stamina Bar
+	local sFrame = Instance.new("Frame")
+	sFrame.Name = "StaminaFrame"
+	sFrame.Size = UDim2.new(0, 190, 0, 16)
+	sFrame.Position = UDim2.new(0.5, -95, 0.82, 0)
+	sFrame.BackgroundColor3 = Color3.fromRGB(20, 32, 26)
+	sFrame.BackgroundTransparency = 0.25
+	sFrame.Visible = false
+	createCorner(sFrame, 8)
+	createStroke(sFrame, Color3.fromRGB(100, 240, 180), 1.2)
+	sFrame.Parent = hudGui
+	
+	local sFill = Instance.new("Frame")
+	sFill.Name = "StaminaFill"
+	sFill.Size = UDim2.new(1, 0, 1, 0)
+	sFill.BackgroundColor3 = Color3.fromRGB(90, 245, 175)
+	sFill.BorderSizePixel = 0
+	createCorner(sFill, 8)
+	sFill.Parent = sFrame
+	
+	local sLabel = Instance.new("TextLabel")
+	sLabel.Name = "StaminaLabel"
+	sLabel.Size = UDim2.new(1, 0, 1, 0)
+	sLabel.BackgroundTransparency = 1
+	sLabel.Text = "FLIGHT GRIP"
+	sLabel.TextColor3 = Color3.fromRGB(20, 35, 28)
+	sLabel.TextSize = 10
+	sLabel.Font = Enum.Font.GothamBold
+	sLabel.Parent = sFrame
+	
+	staminaFrame = sFrame
+	staminaFill = sFill
+	
 	print("[UIController] Solarpunk HUD loaded successfully.")
 end
 
@@ -308,6 +343,22 @@ function UIController.update(dt: number)
 		speedAltitudeLabel.Text = string.format("On Foot  •  Meadow Alt: %dm", alt)
 		
 		controlsPromptLabel.Text = "[E] Open Glider  •  [1/2] Switch Glider"
+	end
+	
+	-- 3. Flight Stamina Update
+	if staminaFrame and staminaFill then
+		if isFlying then
+			staminaFrame.Visible = true
+			local fraction = KiteFlightController.getStaminaFraction()
+			staminaFill.Size = UDim2.new(fraction, 0, 1, 0)
+			if fraction < 0.25 then
+				staminaFill.BackgroundColor3 = Color3.fromRGB(255, 95, 95)
+			else
+				staminaFill.BackgroundColor3 = Color3.fromRGB(90, 245, 175)
+			end
+		else
+			staminaFrame.Visible = false
+		end
 	end
 end
 
