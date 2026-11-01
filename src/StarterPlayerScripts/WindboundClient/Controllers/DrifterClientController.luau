@@ -275,8 +275,12 @@ function DrifterClientController.stepDetection(dt: number)
 	
 	-- Update proximity prompt banner
 	if promptBanner then
-		if currentTargetDrifter and not activeSession and KiteFlightController.isFlying() then
-			promptBanner.Text = string.format("🍃 Leafglider nearby (%.0fm) • Press [LMB] or [F] to Start Windweaving", closestDist)
+		if currentTargetDrifter and not activeSession then
+			if KiteFlightController.isFlying() then
+				promptBanner.Text = string.format("🍃 Wild Drifter nearby (%.0fm) • Press [LMB] or [F] to Start Windweaving!", closestDist)
+			else
+				promptBanner.Text = string.format("🍃 Wild Drifter nearby (%.0fm) • Jump & Press [Space] to Fly!", closestDist)
+			end
 			promptBanner.Visible = true
 		else
 			promptBanner.Visible = false

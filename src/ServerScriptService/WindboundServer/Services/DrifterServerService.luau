@@ -35,8 +35,8 @@ local activeWeaves: { [Player]: ActiveWeave } = {}
 -- Defined Spawning Anchor Points directly at the SkywindPier LaunchPad
 local SPAWN_ANCHORS = {
 	Vector3.new(138, 172, 0),   -- Directly above the Launch Pad disc (8 studs up)
-	Vector3.new(175, 174, 0),   -- 37 studs ahead in the open sky
-	Vector3.new(160, 176, 25),  -- Off the right wing of the Launch Pad
+	Vector3.new(165, 172, 0),   -- 27 studs ahead in the open sky
+	Vector3.new(155, 174, 20),  -- Off the right wing of the Launch Pad
 }
 
 function DrifterServerService.init()
@@ -119,7 +119,7 @@ function DrifterServerService.spawnDrifter(drifterId: string, anchor: Vector3)
 		Model = drifter,
 		Stats = stats,
 		HomeAnchor = anchor,
-		CurrentTarget = anchor + Vector3.new(math.random(-12, 12), 0, math.random(-12, 12)),
+		CurrentTarget = anchor + Vector3.new(math.random(-10, 10), 0, math.random(-10, 10)),
 		BaseY = anchor.Y,
 		Speed = stats.Speed,
 		NextWaypointTime = os.clock() + math.random(5, 8),
@@ -141,10 +141,10 @@ function DrifterServerService.stepAI(dt: number)
 		
 		-- Pick new random wander waypoint within tight radius near launch pad
 		if now >= data.NextWaypointTime then
-			local rad = 15
+			local rad = 12
 			local randOffset = Vector3.new(
 				math.random(-rad, rad),
-				math.random(-3, 3),
+				math.random(-2, 2),
 				math.random(-rad, rad)
 			)
 			data.CurrentTarget = data.HomeAnchor + randOffset
@@ -159,12 +159,18 @@ function DrifterServerService.stepAI(dt: number)
 		local moveDir = (targetWithBob - currentPos)
 		local dist = moveDir.Magnitude
 		
-		if dist > 0.5 then
+		if dist > 0.1 then
 			local stepDist = math.min(dist, data.Speed * dt)
 			local newPos = currentPos + (moveDir.Unit * stepDist)
-			local lookAt = currentPos + moveDir.Unit * 10
-			local targetCF = CFrame.lookAt(newPos, Vector3.new(lookAt.X, newPos.Y, lookAt.Z))
-			model:PivotTo(targetCF)
+			
+			local horizDir = Vector3.new(moveDir.X, 0, moveDir.Z)
+			if horizDir.Magnitude > 0.2 then
+				local targetCF = CFrame.lookAt(newPos, newPos + horizDir.Unit)
+				model:PivotTo(targetCF)
+			else
+				local currentRot = root.CFrame.Rotation
+				model:PivotTo(CFrame.new(newPos) * currentRot)
+			end
 		end
 	end
 end
