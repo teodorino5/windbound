@@ -2,7 +2,7 @@
 local Players = game:GetService("Players")
 
 local RESCUE_ALTITUDE = 85
-local SPAWN_RETURN_CFRAME = CFrame.new(-65, 164.5, 0)
+local SPAWN_RETURN_CFRAME = CFrame.new(105, 164.5, 0) * CFrame.Angles(0, math.rad(-90), 0)
 
 task.spawn(function()
 	while true do
