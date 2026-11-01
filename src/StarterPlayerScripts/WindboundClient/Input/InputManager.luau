@@ -11,7 +11,7 @@ local spaceCallbacks: { () -> () } = {}
 local captureCallbacks: { () -> () } = {}
 
 function InputManager.init()
-	-- 1. PC Keyboard Input
+	-- 1. PC Keyboard & Mouse Input
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then return end
 		if input.KeyCode == Enum.KeyCode.E then
@@ -20,7 +20,7 @@ function InputManager.init()
 			for _, cb in spaceCallbacks do cb() end
 		elseif input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.Q then
 			for _, cb in dashCallbacks do cb() end
-		elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+		elseif input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.F or input.KeyCode == Enum.KeyCode.C then
 			for _, cb in captureCallbacks do cb() end
 		end
 	end)
@@ -55,7 +55,7 @@ function InputManager.init()
 			end
 			return Enum.ContextActionResult.Pass
 		end, true, Enum.KeyCode.Unknown)
-		ContextActionService:SetTitle("Windbound_MobileLaunch", "Kite")
+		ContextActionService:SetTitle("Windbound_MobileLaunch", "Glider")
 		ContextActionService:SetPosition("Windbound_MobileLaunch", UDim2.new(1, -90, 1, -180))
 		
 		ContextActionService:BindAction("Windbound_MobileDash", function(actionName, inputState)
@@ -66,6 +66,15 @@ function InputManager.init()
 		end, true, Enum.KeyCode.Unknown)
 		ContextActionService:SetTitle("Windbound_MobileDash", "Dash")
 		ContextActionService:SetPosition("Windbound_MobileDash", UDim2.new(1, -90, 1, -100))
+		
+		ContextActionService:BindAction("Windbound_MobileCapture", function(actionName, inputState)
+			if inputState == Enum.UserInputState.Begin then
+				for _, cb in captureCallbacks do cb() end
+			end
+			return Enum.ContextActionResult.Pass
+		end, true, Enum.KeyCode.Unknown)
+		ContextActionService:SetTitle("Windbound_MobileCapture", "Catch")
+		ContextActionService:SetPosition("Windbound_MobileCapture", UDim2.new(1, -170, 1, -100))
 	end
 end
 

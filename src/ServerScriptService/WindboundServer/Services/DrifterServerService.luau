@@ -24,7 +24,6 @@ type ActiveDrifter = {
 
 local activeDrifters: { [Model]: ActiveDrifter } = {}
 
--- Capture session tracking for anti-exploit validation
 type ActiveWeave = {
 	Player: Player,
 	DrifterModel: Model,
@@ -34,11 +33,11 @@ type ActiveWeave = {
 local activeWeaves: { [Player]: ActiveWeave } = {}
 
 -- Defined Spawning Anchor Points around Greenwake Meadows
+-- Primary anchor at (0, 175, 10) is directly visible from MeadowSpawn (-65, 163.5, 0)
 local SPAWN_ANCHORS = {
-	Vector3.new(0, 205, -50),   -- Whispering Ridge Thermal
-	Vector3.new(95, 188, 20),   -- Windwake Pier Cliff Outskirts
-	Vector3.new(125, 198, 75),  -- Satellite Islet Drift
-	Vector3.new(-65, 190, -25), -- Sunspire West Meadows
+	Vector3.new(0, 175, 10),    -- Meadow Valley Thermal (front and center)
+	Vector3.new(45, 178, 25),   -- Pier Approach Overlook
+	Vector3.new(-30, 180, -25), -- Whispering Slope
 }
 
 function DrifterServerService.init()
@@ -48,6 +47,10 @@ function DrifterServerService.init()
 		driftersFolder.Name = "Drifters"
 		driftersFolder.Parent = Workspace
 	end
+	
+	-- Clear any leftover drifters from previous session
+	driftersFolder:ClearAllChildren()
+	activeDrifters = {}
 	
 	-- Spawn initial population
 	for _, anchor in ipairs(SPAWN_ANCHORS) do
@@ -63,7 +66,7 @@ function DrifterServerService.init()
 		end
 	end)
 	
-	-- AI Movement Loop
+	-- AI Movement Loop (10 Hz)
 	task.spawn(function()
 		while true do
 			local dt = task.wait(0.1)
@@ -71,26 +74,44 @@ function DrifterServerService.init()
 		end
 	end)
 	
-	print("[DrifterServerService] Initialized with 4 wild Drifter anchors.")
+	print("[DrifterServerService] Initialized with wild Leafgliders across Greenwake Meadows.")
 end
 
 function DrifterServerService.spawnDrifter(drifterId: string, anchor: Vector3)
 	local stats = DrifterConfig.getDrifter(drifterId)
-	if not stats then return end
+	if not stats then
+		warn("[DrifterServerService] No stats for drifter: " .. drifterId)
+		return
+	end
 	
-	local template = WindboundShared.Assets.Drifters:FindFirstChild(drifterId) :: Model?
-	if not template then return end
+	local assets = WindboundShared:FindFirstChild("Assets")
+	local drifterAssets = assets and assets:FindFirstChild("Drifters")
+	local template = drifterAssets and drifterAssets:FindFirstChild(drifterId) :: Model?
+	if not template then
+		warn("[DrifterServerService] No template in ReplicatedStorage for: " .. drifterId)
+		return
+	end
 	
 	local driftersFolder = Workspace:WaitForChild("Drifters")
 	local drifter = template:Clone()
-	drifter.Name = string.format("Drifter_%s_%d", drifterId, os.clock())
+	drifter.Name = string.format("Drifter_%s_%d", drifterId, math.floor(os.clock()))
 	
 	local root = drifter.PrimaryPart or drifter:FindFirstChild("RootPart") :: BasePart?
-	if not root then return end
+	if not root then
+		warn("[DrifterServerService] Template missing PrimaryPart: " .. drifterId)
+		drifter:Destroy()
+		return
+	end
 	
 	root.Anchored = true
 	root.CanCollide = false
 	root.CFrame = CFrame.new(anchor)
+	
+	for _, desc in drifter:GetDescendants() do
+		if desc:IsA("BasePart") then
+			desc.CanCollide = false
+		end
+	end
 	
 	CollectionService:AddTag(drifter, GameConfig.Tags.Drifter)
 	drifter.Parent = driftersFolder
@@ -99,12 +120,13 @@ function DrifterServerService.spawnDrifter(drifterId: string, anchor: Vector3)
 		Model = drifter,
 		Stats = stats,
 		HomeAnchor = anchor,
-		CurrentTarget = anchor + Vector3.new(math.random(-25, 25), 0, math.random(-25, 25)),
+		CurrentTarget = anchor + Vector3.new(math.random(-20, 20), 0, math.random(-20, 20)),
 		BaseY = anchor.Y,
 		Speed = stats.Speed,
-		NextWaypointTime = os.clock() + math.random(5, 9),
+		NextWaypointTime = os.clock() + math.random(5, 8),
 		IsCaptured = false,
 	}
+	print(string.format("[DrifterServerService] Spawned %s at (%.1f, %.1f, %.1f)", drifter.Name, anchor.X, anchor.Y, anchor.Z))
 end
 
 function DrifterServerService.stepAI(dt: number)
@@ -123,11 +145,11 @@ function DrifterServerService.stepAI(dt: number)
 			local rad = data.Stats.WanderRadius
 			local randOffset = Vector3.new(
 				math.random(-rad, rad),
-				math.random(-8, 8),
+				math.random(-6, 6),
 				math.random(-rad, rad)
 			)
 			data.CurrentTarget = data.HomeAnchor + randOffset
-			data.NextWaypointTime = now + math.random(6, 11)
+			data.NextWaypointTime = now + math.random(6, 10)
 		end
 		
 		-- Sinusoidal vertical bobbing
@@ -138,11 +160,10 @@ function DrifterServerService.stepAI(dt: number)
 		local moveDir = (targetWithBob - currentPos)
 		local dist = moveDir.Magnitude
 		
-		if dist > 1 then
+		if dist > 0.5 then
 			local stepDist = math.min(dist, data.Speed * dt)
 			local newPos = currentPos + (moveDir.Unit * stepDist)
 			local lookAt = currentPos + moveDir.Unit * 10
-			-- Smooth banking toward waypoint
 			local targetCF = CFrame.lookAt(newPos, Vector3.new(lookAt.X, newPos.Y, lookAt.Z))
 			model:PivotTo(targetCF)
 		end
@@ -155,25 +176,32 @@ function DrifterServerService.handleStartWeave(player: Player, data: any)
 	local drifterData = activeDrifters[drifter]
 	if not drifterData or drifterData.IsCaptured then return end
 	
-	-- Verify player has flying kite
-	local playerKites = Workspace:FindFirstChild("PlayerKites")
-	local kite = playerKites and playerKites:FindFirstChild("Kite_" .. player.Name) :: Model?
-	if not kite or not kite.PrimaryPart then return end
+	local char = player.Character
+	if not char then return end
+	local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not hrp or not drifter.PrimaryPart then return end
 	
-	local dist = (kite.PrimaryPart.Position - drifter.PrimaryPart.Position).Magnitude
-	if dist <= (drifterData.Stats.CaptureRadius + 12) then
+	local dist = (hrp.Position - drifter.PrimaryPart.Position).Magnitude
+	local maxDist = drifterData.Stats.CaptureRadius + 25 -- Generous margin
+	
+	if dist <= maxDist then
 		activeWeaves[player] = {
 			Player = player,
 			DrifterModel = drifter,
 			StartTime = os.clock(),
 			CheckpointsCompleted = 0,
 		}
-		-- Send confirmation to client to spawn weave rings
+		
 		NetworkService.Remotes.CaptureEvent:FireClient(player, "WeaveStarted", {
 			drifter = drifter,
 			stats = drifterData.Stats,
 			timeLimit = drifterData.Stats.CaptureTimeLimit,
 		})
+		print(string.format("[DrifterServerService] %s initiated windweaving with %s (dist=%.1f)",
+			player.Name, drifter.Name, dist))
+	else
+		print(string.format("[DrifterServerService] StartWeave rejected: player too far (dist=%.1f, max=%.1f)",
+			dist, maxDist))
 	end
 end
 
@@ -186,31 +214,32 @@ function DrifterServerService.handleCompleteWeave(player: Player, data: any)
 	if not drifterData or drifterData.IsCaptured then return end
 	
 	local timeTaken = os.clock() - weave.StartTime
-	if timeTaken > drifterData.Stats.CaptureTimeLimit + 2.5 then
-		-- Expired
+	if timeTaken > drifterData.Stats.CaptureTimeLimit + 3.0 then
 		activeWeaves[player] = nil
+		print(string.format("[DrifterServerService] Weave expired for %s (took %.1fs)", player.Name, timeTaken))
 		return
 	end
 	
-	-- Mark captured
 	drifterData.IsCaptured = true
 	activeWeaves[player] = nil
 	
-	print(string.format("[DrifterServerService] Player %s captured %s!", player.Name, drifterData.Stats.DisplayName))
+	print(string.format("[DrifterServerService] %s successfully captured %s in %.1fs!",
+		player.Name, drifterData.Stats.DisplayName, timeTaken))
 	
-	-- Notify client
 	NetworkService.Remotes.CaptureEvent:FireClient(player, "CaptureSuccess", {
 		drifterName = drifterData.Stats.DisplayName,
 		exp = drifterData.Stats.ExpReward,
 		rarity = drifterData.Stats.Rarity,
 	})
 	
-	-- Despawn Drifter with dissolve effect
+	-- Dissolve effect and respawn
 	task.spawn(function()
 		for i = 1, 10 do
-			task.wait(0.05)
-			if drifter.PrimaryPart then
-				drifter.PrimaryPart.Transparency = i * 0.1
+			task.wait(0.06)
+			for _, desc in drifter:GetDescendants() do
+				if desc:IsA("BasePart") then
+					desc.Transparency = i * 0.1
+				end
 			end
 		end
 		activeDrifters[drifter] = nil
@@ -218,8 +247,7 @@ function DrifterServerService.handleCompleteWeave(player: Player, data: any)
 		local id = drifterData.Stats.Id
 		drifter:Destroy()
 		
-		-- Respawn after 20 seconds
-		task.wait(20)
+		task.wait(12)
 		DrifterServerService.spawnDrifter(id, anchor)
 	end)
 end
