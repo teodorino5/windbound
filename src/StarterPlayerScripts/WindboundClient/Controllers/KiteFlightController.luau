@@ -404,7 +404,7 @@ function KiteFlightController.stepFlight(dt: number)
 	local driftVelocity = crosswind * 0.22
 	
 	local verticalClimb = math.sin(currentPitch) * forwardSpeed
-	local verticalVelocity = -3.5 + verticalClimb + thermalLift
+	local verticalVelocity = -1.8 + verticalClimb + thermalLift
 	
 	if flightTime < 0.6 and wasOnGroundLaunch then
 		verticalVelocity = math.max(verticalVelocity, 14)
