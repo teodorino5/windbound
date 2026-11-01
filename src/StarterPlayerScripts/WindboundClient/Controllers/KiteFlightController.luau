@@ -421,13 +421,23 @@ function KiteFlightController.stepFlight(dt: number)
 	KiteCameraController.update(dt)
 	
 	if flightTime > 1.2 then
+		local excludeList = { character }
+		local ringsFolder = Workspace:FindFirstChild("ActiveWeaveRings")
+		if ringsFolder then table.insert(excludeList, ringsFolder) end
+		local driftersFolder = Workspace:FindFirstChild("Drifters")
+		if driftersFolder then table.insert(excludeList, driftersFolder) end
+		
 		local rayParams = RaycastParams.new()
 		rayParams.FilterType = Enum.RaycastFilterType.Exclude
-		rayParams.FilterDescendantsInstances = { character }
+		rayParams.FilterDescendantsInstances = excludeList
 		
 		local groundRay = Workspace:Raycast(currentPos, Vector3.new(0, -3.2, 0), rayParams)
 		if groundRay and velocity.Y < -0.5 then
-			KiteFlightController.requestRecall()
+			local hitPart = groundRay.Instance
+			-- Only land on solid walkable ground (must have CanCollide = true and not be a weave ring)
+			if hitPart and hitPart.CanCollide and not hitPart.Name:find("WindRing") then
+				KiteFlightController.requestRecall()
+			end
 		end
 	end
 end

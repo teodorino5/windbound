@@ -392,6 +392,8 @@ function DrifterClientController.startWeaveChallenge(drifter: Model, stats: any,
 		ring.Size = Vector3.new(0.6, 16, 16)
 		ring.CFrame = ringCF * CFrame.Angles(0, 0, math.rad(90))
 		ring.CanCollide = false
+		ring.CanQuery = false
+		ring.CanTouch = false
 		ring.Anchored = true
 		ring.CastShadow = false
 		
