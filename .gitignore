@@ -1,0 +1,16 @@
+# Roblox Studio temporary & lock files
+*.rbxlx.lock
+*.rbxl.lock
+*.rbxmx.lock
+
+# Blender temporary files
+*.blend1
+*.blend2
+*.bke
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build & temp logs
+*.log
